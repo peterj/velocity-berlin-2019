@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: async-client-deployment
+  labels:
+    app: async-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: async-client
+  template:
+    metadata:
+      labels:
+        app: async-client
+    spec:
+      containers:
+        - name: client
+          image: learncloudnative/async-client:0.1.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: QUEUE_URL
+              value: "amqp://admin:admin@my-rabbit-rabbitmq-ha.rabbit.svc.cluster.local:5672"
+          resources:
+            limits:
+              cpu: 300m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: async-client
+  labels:
+    app: async-client
+spec:
+  selector:
+    app: async-client
+  ports:
+    - port: 80
+      name: http
+      targetPort: 3000
+  type: LoadBalancer
