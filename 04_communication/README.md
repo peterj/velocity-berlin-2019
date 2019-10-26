@@ -3,6 +3,7 @@
 For these exercises you will be using two simple services - a client and a server. A client sends a string to the server and the server returns a reversed string.
 
 ## Prerequisites
+
 - Kubernetes cluster
 - [Helm](https://helm.sh)
 
@@ -60,7 +61,7 @@ For the async communcation example you will run an instance of the [RabbitMQ](ht
 docker run -d --name amqp -p 5672:5672 rabbitmq
 ```
 
->Above command runs the `rabbitmq` image in detached mode (`-d`) and exposes port `5672` to the host machine. This will allow you to connect to broker by simply using `amqp://localhost`
+> Above command runs the `rabbitmq` image in detached mode (`-d`) and exposes port `5672` to the host machine. This will allow you to connect to broker by simply using `amqp://localhost`
 
 1. Run the async server from the `./async/server` folder:
 
@@ -145,7 +146,7 @@ Similarly, to scale down, you would run:
 kubectl scale deployment async-client-deployment --replicas=1
 ```
 
-##### Monitoring RabbitMQ 
+##### Monitoring RabbitMQ
 
 To get the RabbitMQ stats, you can create a port forward to the administration portal using the following command:
 
@@ -155,15 +156,9 @@ kubectl port-forward svc/my-rabbit-rabbitmq-ha -n rabbit 8000:15672
 
 The management portal will be at `http://localhost:8000`
 
-
-
-
-
-
 ##### Horizontal pod scaling Metrics Server
 
 In order to use the horizontal pod scaler, you need to install the metrics server using Helm:
-
 
 ```
 helm install stable/metrics-server
@@ -184,12 +179,46 @@ spec:
   minReplicas: 1
   maxReplicas: 10
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 50
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
 ```
 
 If you deploy the above horizontal pod autoscaler, Kubernetes will automatically scale up (or down) the number of pods based on the avergae CPU utilization.
+
+## Pub/Sub
+
+For the Pub/Sub scenario, there are 3 services involved: frontend, activation and email.
+
+### Sign up flow
+
+Use the following command to start the sign up flow:
+
+```
+curl -X POST -d '{"email":"peter@example.com" }' -H "content-type: application/json" localhost:3000/register
+```
+
+Sign-up flow:
+
+1. **Frontend service** publishes an `account.signup` event
+1. **Activation service** listens to all events starting with the key `account.*`. It reacts to the signup event and creates an activation code
+1. **Activation service** publishes an `account.sendActivationCode` event
+1. **Email service** listents to the `sendActivationCode` event and sends an email
+
+### Activation flow
+
+To trigger the activation flow, use the following requests (you can get the activation code from the output of the email service):
+
+```
+curl -X POST -d '{"activationCode": "7606" }' -H "content-type: application/json" localhost:3000/activate
+```
+
+Activation flow:
+
+1. **Frontend service** publishes `account.activate` event
+1. **Activation service** reacts to that event, checks if the account hasn't been activated and code mathces, then activates the account
+1. **Activation service** sends the `account.activated` event
+1. **Email service** reacts to the `account.activated` event and sends an email
