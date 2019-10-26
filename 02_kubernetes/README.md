@@ -1,11 +1,12 @@
 # Kubernetes Exercieses
 
-In this exercise you will install a Kubernetes cluster (or use a cloud-managed one) to deploy an application and try out some `kubectl`
+In this exercise you will install a Kubernetes cluster (or use a cloud-managed one) to deploy an application and try out some `kubectl` commands.
 
 ## Prerequisites
 
 - Docker for Mac/Windows (or Docker for Linux) with Kubernetes support enabled
 - Kubernetes CLI (`kubectl`) (https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+- Helm (https://helm.sh)
 
 If you're using Linux, you will have to install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
 Minikube for running a Kubernetes cluster)
@@ -130,7 +131,7 @@ External Traffic Policy:  Cluster
 Events:                   <none>
 ```
 
-## Scalling up
+## Scalling up/down
 
 Now that you can access the application through exposed service, you can try and scale the deployment and create more replicas of the application:
 
@@ -155,3 +156,11 @@ Similarly, you can scale down the pods by running the same command and providing
 ```
 kubectl scale deployment helloworld --replicas=1
 ```
+
+## Using Helm to create releases
+
+Helm helps you manage Kubernetes applications. Using Helm Charts, you can define, install and upgrade Kubernetes applications (deployments, services, etc.).
+
+To get started, make sure you have installed Helm and ran `helm init` that installs a component called `tiller` in your Kubernetes cluster.
+
+TODO
