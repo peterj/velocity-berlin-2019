@@ -1,49 +1,74 @@
-const express = require('express');
-const morgan = require('morgan');
 const amqp = require('amqplib');
-const app = express();
-app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-const QueueUrl = process.env.QUEUE_URL || `amqp://localhost`;
+const RabbitMqUrl = process.env.RABBIT_MQ_URL || `amqp://localhost`;
 const ExchangeName = process.env.EXCHANGE_NAME || 'email-pub-sub';
-const Port = process.env.PORT || 3002;
+const MaxConnectRetries = parseInt(process.env.MAX_CONNECT_RETRIES) || 5;
+const ConnectRetrySleep = parseInt(process.env.CONNECT_RETRY_SLEEP, 10) || 4000;
+
+// Events
+const AccountSendActivationCodeEvent = 'account.sendActivationCode';
+const AccountActivatedEvent = 'account.activated';
 
 let channel = null;
+let currentConnectionRetry = 1;
 
-// Connects to the queue and creates a channel
-const initQueue = async () => {
-    console.log(`Connecting to ${QueueUrl}`);
-    amqp.connect(QueueUrl)
-        .then(c => c.createChannel())
-        .then(ch => {
-            console.log('Channel created.');
+// Connect to RabbitMQ
+const connect = (url) => {
+    return amqp.connect(url);
+}
+
+// create the connection with retries
+const createConnection = () => {
+    const url = `${RabbitMqUrl}?heartbeat=60`;
+    console.log('[RabbitMQ]: Connecting to', url);
+    return connect(url)
+        .then((conn) => {
+            console.log("[RabbitMQ]: Connected");
+            currentConnectionRetry = 0;
+            return conn.createChannel();
+        }).then(ch => {
+            console.log('[RabbitMQ]: Channel created');
             channel = ch;
-
-            ch.assertExchange(ExchangeName, 'topic', { durable: false });
-            ch.assertQueue('', { exclusive: true }).then(q => {
-                ch.bindQueue(q.queue, ExchangeName, 'account.sendActivationCode');
-                ch.bindQueue(q.queue, ExchangeName, 'account.activated');
-
-                ch.consume(q.queue, (msg) => {
-                    if (msg.fields.routingKey === 'account.sendActivationCode') {
-                        console.log(`Sending activation email with payload ${msg.content.toString()}`);
-                    } else if (msg.fields.routingKey === 'account.activated') {
-                        console.log(`Sending welcome email using payload ${msg.content.toString()}`);
-                    }
-                });
+            channel.assertExchange(ExchangeName, 'topic', {
+                durable: false
             });
-        });
 
+            consume(channel);
+        }).catch(err => {
+            if (err.code === 'ECONNREFUSED') {
+                if (currentConnectionRetry <= MaxConnectRetries) {
+                    console.error(`[RabbitMQ]: Error connecting. Retry ${currentConnectionRetry}/${MaxConnectRetries}...`);
+                    currentConnectionRetry++;
+                    return setTimeout(createConnection, ConnectRetrySleep);
+                } else {
+                    console.error(`[RabbitMQ]: Failed to connect after ${MaxConnectRetries} retries and ${ConnectRetrySleep * MaxConnectRetries} ms. Giving up.`)
+                    process.exit(1);
+                }
+            }
+            console.error('[RabbitMQ]: Error connecting', err);
+        });
+}
+
+const consume = (channel) => {
+    channel.assertQueue('', { exclusive: true }).then(q => {
+        channel.bindQueue(q.queue, ExchangeName, AccountSendActivationCodeEvent);
+        channel.bindQueue(q.queue, ExchangeName, AccountActivatedEvent);
+
+        channel.consume(q.queue, (msg) => {
+            if (msg.fields.routingKey === AccountSendActivationCodeEvent) {
+                console.log(`[Email]: Received event "${AccountSendActivationCodeEvent}". Sending activation email with payload "${msg.content.toString()}"`);
+            } else if (msg.fields.routingKey === AccountActivatedEvent) {
+                console.log(`[Email]: Received event "${AccountActivatedEvent}". Sending welcome email using payload "${msg.content.toString()}"`);
+            }
+        });
+    });
 };
 
-app.listen(Port, async () => {
-    initQueue();
-    console.log(`Listening on ${Port}`);
-});
+createConnection();
 
 process.on('exit', () => {
-    channel.close();
-    console.log('Exiting...');
+    if (channel !== null) {
+        channel.close();
+    }
+    console.log('[Email]: Exiting...');
 });

@@ -1,95 +1,125 @@
-const express = require('express');
-const morgan = require('morgan');
 const amqp = require('amqplib');
-const app = express();
-app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-const QueueUrl = process.env.QUEUE_URL || `amqp://localhost`;
+const RabbitMqUrl = process.env.RABBIT_MQ_URL || `amqp://localhost`;
 const ExchangeName = process.env.EXCHANGE_NAME || 'email-pub-sub';
-const Port = process.env.PORT || 3001;
+const MaxConnectRetries = parseInt(process.env.MAX_CONNECT_RETRIES) || 5;
+const ConnectRetrySleep = parseInt(process.env.CONNECT_RETRY_SLEEP, 10) || 4000;
 
 // creates an activation code
 const createActivationCode = () => (Math.ceil(Math.random() * 10000)).toString();
 
+// Events
+const AllAccountEvents = 'account.*';
+const AccountSignupEvent = 'account.signup';
+const AccountActivateEvent = 'account.activate';
+const AccountActivatedEvent = 'account.activated';
+const AccountSendActivationCodeEvent = 'account.sendActivationCode';
 
 // Storing activations (e.g. { "email": "mail", "activationCode": "code"})
 let allActivations = [];
 
 let channel = null;
+let currentConnectionRetry = 1;
 
-// Connects to the queue and creates a channel
-const initQueue = async () => {
-    console.log(`Connecting to ${QueueUrl}`);
-    amqp.connect(QueueUrl)
-        .then(c => c.createChannel())
-        .then(ch => {
-            console.log('Channel created.');
+// Connect to RabbitMQ
+const connect = (url) => {
+    return amqp.connect(url);
+};
+
+// create the connection with retries
+const createConnection = () => {
+    const url = `${RabbitMqUrl}?heartbeat=60`;
+    console.log('[RabbitMQ]: Connecting to', url);
+    return connect(url)
+        .then((conn) => {
+            console.log("[RabbitMQ]: Connected");
+            currentConnectionRetry = 0;
+            return conn.createChannel();
+        }).then(ch => {
+            console.log('[RabbitMQ]: Channel created');
             channel = ch;
+            channel.assertExchange(ExchangeName, 'topic', {
+                durable: false
+            });
 
-            ch.assertExchange(ExchangeName, 'topic', { durable: false });
-            ch.assertQueue('', { exclusive: true }).then(q => {
-                ch.bindQueue(q.queue, ExchangeName, 'account.*');
-                ch.consume(q.queue, (msg) => {
-                    const msgContent = msg.content.toString();
+            consume(channel);
+        }).catch(err => {
+            if (err.code === 'ECONNREFUSED') {
+                if (currentConnectionRetry <= MaxConnectRetries) {
+                    console.error(`[RabbitMQ]: Error connecting. Retry ${currentConnectionRetry}/${MaxConnectRetries}...`);
+                    currentConnectionRetry++;
+                    return setTimeout(createConnection, ConnectRetrySleep);
+                } else {
+                    console.error(`[RabbitMQ]: Failed to connect after ${MaxConnectRetries} retries and ${ConnectRetrySleep * MaxConnectRetries} ms. Giving up.`)
+                    process.exit(1);
+                }
+            }
+            console.error('[RabbitMQ]: Error connecting', err);
+        });
+};
 
-                    switch (msg.fields.routingKey) {
-                        case 'account.signup': {
-                            const payload = {
-                                "email": msgContent,
-                                "activationCode": createActivationCode(),
-                            };
+const consume = (channel) => {
+    channel.assertQueue('', { exclusive: true }).then(q => {
+        channel.bindQueue(q.queue, ExchangeName, AllAccountEvents);
+        channel.consume(q.queue, (msg) => {
+            const msgContent = msg.content.toString();
 
-                            payload.activated = false;
+            switch (msg.fields.routingKey) {
+                case AccountSignupEvent: {
+                    const payload = {
+                        "email": msgContent,
+                        "activationCode": createActivationCode(),
+                    };
 
-                            // Store this in memory
-                            allActivations.push(payload);
+                    payload.activated = false;
 
-                            console.log('Publishing event account.sendActivationCode ...');
-                            // Publish the account.activate event
-                            ch.publish(
-                                ExchangeName,
-                                'account.sendActivationCode',
-                                Buffer.from(JSON.stringify(payload)),
-                                { correlationId: msg.properties.correlationId })
-                            return;
-                        }
+                    // Store this in memory
+                    allActivations.push(payload);
 
-                        case 'account.activate': {
-                            for (var a in allActivations) {
-                                const act = allActivations[a];
-                                if (act.activationCode === msgContent) {
-                                    if (act.activated) {
-                                        console.log(`Account is already activated!`);
-                                    } else {
-                                        console.log(`Activating account ${act.email}`);
-                                        ch.publish(
-                                            ExchangeName,
-                                            'account.activated',
-                                            Buffer.from(JSON.stringify(act)),
-                                            { correlationId: msg.properties.correlationId })
-                                    }
-                                }
+                    console.log(`[Activation]: Received event "${AccountSignupEvent}" for "${msgContent}"`);
+                    console.log(`[Activation]: Publishing event "${AccountSendActivationCodeEvent}" for "${msgContent}"`);
+                    // Publish the account.sendActivationCode event
+                    channel.publish(
+                        ExchangeName,
+                        AccountSendActivationCodeEvent,
+                        Buffer.from(JSON.stringify(payload)),
+                        { correlationId: msg.properties.correlationId })
+                    return;
+                }
+
+                case AccountActivateEvent: {
+                    console.log(`[Activation]: Received event "${AccountActivateEvent}" for "${msgContent}"`);
+                    for (var a in allActivations) {
+                        const act = allActivations[a];
+                        if (act.activationCode === msgContent) {
+                            if (act.activated) {
+                                console.log(`[Activation]: Account "${act.email}" is already activated`);
+                            } else {
+                                console.log(`[Activation]: Activating account "${act.email}"`);
+                                act.activated = true;
+
+                                console.log(`[Activation]: Publishing event "${AccountActivatedEvent}" for "${act.email}"`);
+                                channel.publish(
+                                    ExchangeName,
+                                    AccountActivatedEvent,
+                                    Buffer.from(JSON.stringify(act)),
+                                    { correlationId: msg.properties.correlationId })
                             }
-
                         }
                     }
 
+                }
+            }
 
-
-                }, { noAck: true });
-            });
-        });
-
+        }, { noAck: true });
+    });
 };
 
-app.listen(Port, async () => {
-    initQueue();
-    console.log(`Listening on ${Port}`);
-});
+createConnection();
 
 process.on('exit', () => {
-    channel.close();
-    console.log('Exiting...');
+    if (channel !== null) {
+        channel.close();
+    }
+    console.log('[Activation]: Exiting...');
 });

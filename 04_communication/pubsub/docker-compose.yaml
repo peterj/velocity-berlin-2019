@@ -1,0 +1,27 @@
+version: "3"
+services:
+  rabbitmq:
+    image: rabbitmq:3.8.0
+
+  email:
+    depends_on:
+      - rabbitmq
+    build: ./email
+    environment:
+      RABBIT_MQ_URL: amqp://rabbitmq:5672
+
+  activation:
+    depends_on:
+      - rabbitmq
+    build: ./activation
+    environment:
+      RABBIT_MQ_URL: amqp://rabbitmq:5672
+
+  frontend:
+    depends_on:
+      - rabbitmq
+    build: ./frontend
+    environment:
+      RABBIT_MQ_URL: amqp://rabbitmq:5672
+    ports:
+      - "3000:3000"

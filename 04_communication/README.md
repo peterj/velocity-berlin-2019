@@ -1,11 +1,21 @@
 # Service Communication Exercises
 
+This folder contains exercises for sync, async and pub/sub service communication. For both sets of exercises you can either run them directly using Node.js or you can build the Docker images and run containers.
+
+## Sync & Async Communication exercises
+
 For these exercises you will be using two simple services - a client and a server. A client sends a string to the server and the server returns a reversed string.
+
+## Pub/sub Exercises
+
+For the pub/sub exercise you will use three different services to simulate a user sign-up and activation scenarios.
 
 ## Prerequisites
 
+- Docker
 - Kubernetes cluster
 - [Helm](https://helm.sh)
+- Node.js/npm
 
 ## Sync communication
 
@@ -222,3 +232,108 @@ Activation flow:
 1. **Activation service** reacts to that event, checks if the account hasn't been activated and code mathces, then activates the account
 1. **Activation service** sends the `account.activated` event
 1. **Email service** reacts to the `account.activated` event and sends an email
+
+## Running the pub/sub example
+
+You can use the docker-compose to run the pub/sub example. Before running everything, we need to build the images first. Run the build command from the `/pubsub` folder, where the `docker-compose.yaml` is located at:
+
+```
+docker-compose build
+```
+
+After images are built, you can run the `docker-compose up` command:
+
+```
+docker-compose up
+```
+
+> Note: you will see the containers start up and some errors as they are trying to connect to RabbitMQ. Docker compose allows to define which containers to start first using the `depends_on` key, however it can't wait for the containers to start up. We designed the services in such a way that they will do a couple of retries when connecting to RabbitMQ. You can control the number of retries (default: 5) and wait (default: 3000 ms) between retries using the `MAX_CONNECT_RETRIES` and `CONNECT_RETRY_SLEEP` environment variables.
+
+To ensure all containers are up and running, you can look for the following output from each service in the logs:
+
+```
+activation_1  | [RabbitMQ]: Connected
+activation_1  | [RabbitMQ]: Channel created
+```
+
+Alternatively, run `docker ps` and check that all containers are up, like this:
+
+```
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                NAMES
+97e856ba319f        pubsub_activation   "docker-entrypoint.s…"   41 seconds ago      Up 40 seconds                                            pubsub_activation_1
+a282da97a494        pubsub_frontend     "docker-entrypoint.s…"   41 seconds ago      Up 40 seconds       0.0.0.0:3000->3000/tcp               pubsub_frontend_1
+7ad660395cfc        pubsub_email        "docker-entrypoint.s…"   41 seconds ago      Up 40 seconds                                            pubsub_email_1
+ef4a9957add7        rabbitmq:3.8.0      "docker-entrypoint.s…"   2 minutes ago       Up 41 seconds       4369/tcp, 5671-5672/tcp, 25672/tcp   pubsub_rabbitmq_1
+```
+
+> Note: the image and container names are created automatically by `docker-compose` using the root folder and the service names.
+
+The frontend service is exposed on `localhost:3000`, so you can try the registration flow by sending this request:
+
+```
+curl -X POST -d '{"email":"peter@example.com" }' -H "content-type: application/json" localhost:3000/register
+```
+
+The output from the logs should look similar to this:
+
+```
+frontend_1    | [Frontend]: Publishing event "account.signup" for "peter@example.com"
+frontend_1    | POST /register 200 27.620 ms - 12
+activation_1  | [Activation]: Received event "account.signup" for "peter@example.com"
+activation_1  | [Activation]: Publishing event "account.sendActivationCode" for "peter@example.com"
+email_1       | [Email]: Received event "account.sendActivationCode". Sending activation email with payload "{"email":"peter@example.com","activationCode":"1710","activated":false}"
+
+```
+
+1. The frontend starts the registration flow by publishing the `account.signup` for the provided email.
+1. The activation services receives the event, creates an activation code and publishes an `account.sendActivationCode` event.
+1. The email service is listening to this event and once it receives it, it should "send an email" with the activation code.
+
+Next, let's try out the activation flow. If the email service would actually be sending emails, you would receive the activation code to activate your account. To activate the account, send the following request:
+
+```
+curl -X POST -d '{"activationCode": "7606" }' -H "content-type: application/json" localhost:3000/activate
+```
+
+The output from the containers looks like this:
+
+```
+frontend_1    | [Frontend]: Publishing event "account.activate" using code "1710"
+frontend_1    | POST /activate 200 2.100 ms - 12
+activation_1  | [Activation]: Received event "account.activate" for "1710"
+activation_1  | [Activation]: Activating account "peter@example.com"
+activation_1  | [Activation]: Publishing event "account.activated" for "peter@example.com"
+email_1       | [Email]: Received event "account.activated". Sending welcome email using payload "{"email":"peter@example.com","activationCode":"1710","activated":true}"
+```
+
+1. The frontend publishes the `account.activate` event with the activation code.
+1. The activation service listens to that event and "activates the account". It also publishes the `account.activated` event.
+1. The email service listens to the `account.activated` event and sends a welcome email.
+
+### Add email to the activation flow
+
+Notice how in the activation flow we are only providing the activation code. This is not correct, as we should also be providing the email. To fix this, you have to make the following changes:
+
+1. Update the frontend service to `/activate` endpoint to read the email from the `req.body` and send both activation code and the email when publishing the `AccountActivateEvent`. For example:
+
+```
+    ...
+    const activationCode = req.body.activationCode;
+    const email = req.body.email
+
+    const payload = {
+      activationCode: activationCode
+      email: email
+    }
+    console.log(`[Frontend]: Publishing event "${AccountActivateEvent}" using code "${activationCode}"`);
+
+    channel.publish(ExchangeName, AccountActivateEvent, Buffer.from(JSON.stringify(payload)), { correlationId: createId() });
+    ...
+```
+
+1. Update the Activation service where the event is listened to (`server.js`, line 90) to check that both email _and_ activation code match, before activating the account:
+
+### Add the deactivate flow
+
+Think about and design how a deactivate account flow would look like. As part of the deactivation we want to remove the email from the `allActivations` array in the Activation service as well as send a Goodbye email from the email service
