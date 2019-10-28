@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greeter-v1
+  labels:
+    app: greeter
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: greeter
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: greeter
+        version: v1
+    spec:
+      containers:
+        - image: learncloudnative/greeter-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          name: svc
+          ports:
+            - containerPort: 3000
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: greeter
+  labels:
+    app: greeter
+spec:
+  selector:
+    app: greeter
+  ports:
+    - port: 3000
+      name: http
