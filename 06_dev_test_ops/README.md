@@ -6,16 +6,6 @@
 - [Helm](https://helm.sh)
 - [Draft](https://draft.sh)
 
-For the CI/CD exercise, you will need:
-
-- JenkinsX CLI:
-  ```
-  brew tap jenkins-x/jx
-  brew install jx
-  ```
-- Minikube (or cloud-managed Kubernetes cluster)
-- VirtualBox (for Minikube)
-
 > Make sure you run `draft init` after installation to initialize the Draft packs.
 
 ## Local Development and Debugging
