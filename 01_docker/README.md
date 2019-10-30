@@ -1,18 +1,55 @@
 # Docker Exercises
 
-In this exercise you will install Docker, create a Docker hub account and use different Docker CLI commands.
+In this exercise you will install Docker CLI, create a Docker hub account and try out different Docker CLI commands.
 
 ## Prerequisites
 
-- Docker for Mac/Windows (or Docker for Linux)
+- [Docker for Mac/Windows](https://docs.docker.com/docker-for-mac/install/) (or Docker for Linux)
+
+Run `docker version` to make sure you have Docker up and running. The of the `docker version` command should look similar to this:
+
+```
+$ docker version
+Client: Docker Engine - Community
+ Version:           19.03.3
+ API version:       1.40
+ Go version:        go1.12.10
+ Git commit:        a872fc2
+ Built:             Tue Oct  8 00:55:12 2019
+ OS/Arch:           darwin/amd64
+ Experimental:      true
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          19.03.3
+  API version:      1.40 (minimum version 1.12)
+  Go version:       go1.12.10
+  Git commit:       a872fc2
+  Built:            Tue Oct  8 01:01:15 2019
+  OS/Arch:          linux/amd64
+  Experimental:     true
+ containerd:
+  Version:          v1.2.10
+  GitCommit:        b34a5c8af56e510852c35414db4c1f4fa6172339
+ runc:
+  Version:          1.0.0-rc8+dev
+  GitCommit:        3e425f80a8c931f88e6d94a8c831b9d5aa481657
+ docker-init:
+  Version:          0.18.0
+  GitCommit:        fec3683
+```
 
 ## Docker layers
 
-1. Build the Docker image using the `Dockerfile` in this folder:
+In this exercise you will build a Docker image and inspect different layers that make up that image. All commands are to be run from the `01_docker` folder.
+
+1. Build the Docker image using the `Dockerfile`:
 
 ```
 docker build -t docker-layers .
 ```
+
+> Note: we are using `.` to provide the current folder as the build context for the image. You could also build the image from outside of the current folder, just make sure you provide the path to the Dockerfile using `-f` flag and a correct build context (e.g. `docker build -f ./01_docker/Dockerfile -t docker-layers ./01_docker`)
 
 1. Run the image and check the output:
 
@@ -25,10 +62,10 @@ Hello Docker!
 
 ```
 $ docker images | grep docker-layers
-docker-layers                                                    latest              f7ef8bfd548a        2 minutes ago       106MB
+docker-layers                                                    latest              f7ef8bfd548a        2 minutes ago       8.31MB
 ```
 
-1. Re-build the image again and notice how this time cached layers are used and the build process is fast:
+1. Re-build the image again and notice how this time cached layers are used and the build process is much faster than the first time:
 
 ```
 $ docker build -t docker-layers .
@@ -39,40 +76,42 @@ sys     0m0.052s
 
 ```
 
-1. Inspect the layers in this Docker image:
+> Note: on Mac/Linux, you could use `time docker build -t docker-layers .` to time the execution.
+
+1. Using `docker history` command, inspect the layers in the image:
 
 ```
 docker history docker-layers
 ```
 
-1. Notice a separate layer gets created for `apt-get update` and `apt-get install` commands. We can make this better by combining this into a single command like this:
+1. Notice a separate layer gets created for `apk update` and `apk add curl` commands. You can make this better and more efficient by combining both commands into a single command like this:
 
 ```
-RUN apt-get update && apt-get install
+RUN apk update && apk add install
 ```
 
-1. Update the `Dockerfile` and rebuild it:
+1. Now you can update the `Dockerfile` and rebuild it:
 
 ```
 docker build -t docker-layers .
 ```
 
-1. Check the layers on the image again to ensure the two commands are on the same layer now:
+1. Check the layers on the image again, and you will notice the two commands are on the same layer now:
 
 ```
 $ docker history docker-layers
-7043f703e3f7        2 minutes ago        /bin/sh -c apt-get update && apt-get install…   41.6MB
+7043f703e3f7        2 minutes ago        /bin/sh -c apk update && apt add curl   2.76MB
 ```
 
 1. Add the `hello.txt` to the image, by adding the `COPY hello.txt /app` line to the `Dockerfile`:
 
 ```
-FROM ubuntu:18.04
+FROM alpine:3.10.3
 WORKDIR /app
 COPY hello.sh /app
 RUN chmod +x hello.sh
-RUN apt-get update && apt-get install curl -y
 COPY hello.txt /app
+RUN apk update && apk add curl
 CMD ["./hello.sh"]
 ```
 
@@ -82,13 +121,13 @@ CMD ["./hello.sh"]
 docker build -t docker-layers .
 ```
 
-Notice how the apt-get commands are executed again. That is because the way layers are stacked and the new layer is a difference between the previous one - this causes the `apt-get` commands to get re-executed again.
+Notice how the `apk` commands are executed again. That is because the way layers are stacked and the new layer is a difference between the previous one - this causes the `apk` commands to get re-executed again.
 
-1. Let's try to optimize this. Move the `apt-get` command right below the `FROM` command:
+1. Let's try to optimize this. Move the `apk` commands right under the `FROM` command:
 
 ```
-FROM ubuntu:18.04
-RUN apt-get update && apt-get install curl -y
+FROM alpine:3.10.3
+RUN apk update && apk add curl
 WORKDIR /app
 COPY hello.sh /app
 RUN chmod +x hello.sh
@@ -102,7 +141,7 @@ CMD ["./hello.sh"]
 docker build -t docker-layers .
 ```
 
-Just like previously, image will get rebuilt and the new layer be created. If you add a second file, you will notice that the build command is significantly faster this time, as the cached version of the apt-get layer is used.
+The second step in the Dockerfile is now updating and adding curl. Just like previously, image will get rebuilt and the new layer be created. If you add a second file (`bye.txt`), you will notice that the build command is significantly faster this time and the `apk` layer is not rebuilt as the cached version is used.
 
 1. Add the `bye.txt` to the Dockerfile:
 
@@ -139,8 +178,8 @@ docker tag docker-layers [repository]/docker-layers
 
 ```
 $ docker images | grep docker-layers
-peterjvelocity/docker-layers                 latest              4749e2d84376        4 minutes ago       106MB
-docker-layers                        latest              4749e2d84376        4 minutes ago       106MB
+peterjvelocity/docker-layers                 latest              4749e2d84376        4 minutes ago       8.31MB
+docker-layers                        latest              4749e2d84376        4 minutes ago       8.31MB
 ```
 
 1. Now you can push the image to your repository (replace `peterjvelocity` with your own repository name):
@@ -224,7 +263,7 @@ You will notice the prompt from the previous terminal will exit.
 
 Another fairly common task is running a container locally and exposing a port. For example, you can run a service inside the container, but in order to access that service, you will need to expose the container port to your host machine port so you can access it.
 
-Let's use a simple Node.js application that's packaged in `learncloudnative/helloworld:0.1.0` image.
+Let's use a simple Node.js application that's packaged in the `learncloudnative/helloworld:0.1.0` image.
 
 If you just run the image, you won't be able to access the application running inside it, as the port the application is listening on within the container is not exposed to your machine.
 

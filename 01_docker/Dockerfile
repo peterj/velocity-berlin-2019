@@ -1,7 +1,7 @@
-FROM ubuntu:18.04
+FROM alpine:3.10.3
 WORKDIR /app
 COPY hello.sh /app
 RUN chmod +x hello.sh
-RUN apt-get update
-RUN apt-get install curl -y
+RUN apk update
+RUN apk add curl
 CMD ["./hello.sh"]
