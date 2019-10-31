@@ -5,10 +5,11 @@
 - Kubernetes cluster
 - [Helm](https://helm.sh)
 - [Draft](https://draft.sh)
+- [Skaffold](https://skaffold.dev)
 
 > Make sure you run `draft init` after installation to initialize the Draft packs.
 
-## Local Development and Debugging
+## Local Development and Debugging (Draft)
 
 In this exercise you will use Draft to develop a simple Go service.
 
@@ -130,11 +131,148 @@ Goodbye!
 
 To remove the application from the cluster you can run `draft delete` from the application folder.
 
+## Local Development with Skaffold
+
+To try out the Skaffold tool, you will be using an example Go service in the `./sha` folder. This simple service takes a string and returns a Sha1 representation of that string. For example:
+
+```
+$ curl localhost:8080/Hello
+f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0
+```
+
+Unlike Draft that creates the Dockerfile and Helm chart for you, in order to use Skaffold you need to create a Dockerfile as well as a Kubernetes deployment file (both are already included in the `./sha` folder).
+
+To start, let's initialize Skaffold by `skaffold init`:
+
+```
+$ skaffold init
+apiVersion: skaffold/v1beta17
+kind: Config
+metadata:
+  name: sha
+build:
+  artifacts:
+  - image: sha
+deploy:
+  kubectl:
+    manifests:
+    - deployment.yaml
+
+Do you want to write this configuration to skaffold.yaml? [y/n]:
+```
+
+Confirm the question above and skaffold will crete the configuration file.
+
+With the configuration file in place, we can start using some of the features of Skaffold.
+
+### Building and running
+
+To build the Docker image using Skaffold, you can run: `skaffold build`. This command will create a new tag for the image, build the image and then tag it.
+
+Let's run this in Kubernetes cluster now:
+
+```
+$ skaffold run
+Generating tags...
+ - sha -> sha:244771f-dirty
+Checking cache...
+ - sha: Found Locally
+Tags used in deployment:
+ - sha -> sha:be087dd162425068f8a1279140755b277cb9b67b049a5bb172ef743e644d00a9
+   local images can't be referenced by digest. They are tagged and referenced by a unique ID instead
+Starting deploy...
+ - deployment.apps/sha created
+ - service/sha created
+You can also run [skaffold run --tail] to get the logs
+```
+
+Notice how the output above indicates that the `sha` image was found locally (because you built it earlier) and it's not being rebuilt. Additionally, Skaffold tags the images using a unique ID and then creates the deployment and the service (both defined in the `deployment.yaml` file).
+
+Since we defined the Kubernetes service as a LoadBalancer, you can run the following to test the functionality:
+
+```
+$ curl localhost:8080/Hello
+f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0
+```
+
+Let's make a small change to the code that includes the original string in a header called `Input-String`. Open `./sha/main.go` file and add the line that sets the header to the `shaHandler` function:
+
+```go
+func shaHandler(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+	str := vars["input"]
+
+	h := sha1.New()
+	h.Write([]byte(str))
+    sha := hex.EncodeToString(h.Sum(nil))
+
+    w.Header().Set("Input-String", str)
+	w.Write([]byte(sha))
+}
+```
+
+Instead of building and running this locally, let's use Skaffold to build & deploy the updated service to the Kubernetes cluster.
+
+Use `skaffold run` to re-run the deployment again. Note that this time the command will take a bit longer as the Docker image needs to be re-built. Once it completes, try the request again (add the `-v` for verbose output):
+
+```
+$ curl -v localhost:8080/Hello
+*   Trying ::1...
+* TCP_NODELAY set
+* Connected to localhost (::1) port 8080 (#0)
+> GET /Hello HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+>
+< HTTP/1.1 200 OK
+< Input-String: Hello
+< Date: Thu, 31 Oct 2019 18:27:28 GMT
+< Content-Length: 40
+< Content-Type: text/plain; charset=utf-8
+<
+* Connection #0 to host localhost left intact
+f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0* Closing connection 0
+```
+
+This is pretty nice as you don't need to rebuild the image manually, push it nor update the deployment.
+
+Skaffold also has a `dev` command that continuously builds and deploys code as you make changes. This means you don't even need to run `skaffold run` each time.
+
+Try running this command from your terminal:
+
+```
+$ skaffold dev
+
+... stuff ..
+
+Watching for changes...
+```
+
+The output is similar to the `run` command, but the key change is the last line, where Skaffold is watching for changes.
+
+To see this in action, let's rename the `Input-String` header to `Input`. As you save the file, keep an eye out on the output of the `skaffold dev` command.
+
+You will notice that as you saved the file, Skaffold automatically detected the change and re-built the image. On top of that you can also see the log output from the container, so you know when it starts or when it's being shut down:
+
+```
+Successfully tagged sha:244771f-dirty
+Tags used in deployment:
+ - sha -> sha:afe083896f8ac7e6dd77fd89eb9d529c3bf6a6ef84cdb98ceaec9abd5d1b39ab
+   local images can't be referenced by digest. They are tagged and referenced by a unique ID instead
+Starting deploy...
+ - deployment.apps/sha configured
+Watching for changes...
+[sha-c89b9bd4c-mmm8l sha] {"level":"info","msg":"Running on 8080","time":"2019-10-31T18:35:41Z"}
+[sha-7666c9948d-tg7k8 sha] {"level":"info","msg":"shutting down with timeout 2s","time":"2019-10-31T18:35:41Z"}
+[sha-7666c9948d-tg7k8 sha]
+```
+
 ## Monitoring
 
 In this exercise you will deploy Elastic search, Grafana, Kibana, and Fluentd inside your Kubenernetes cluster and see how you can collect metrics from services.
 
-You will be use a Go service that runs an HTTP server and returns a square of the provided number. For example:
+You will be use a Go service that runs an HTTP server and returns a square of the provided number - the service is in the `./square` folder. For example:
 
 ```
 $ curl localhost:8080/square/55

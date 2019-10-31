@@ -1,0 +1,11 @@
+apiVersion: skaffold/v1beta17
+kind: Config
+metadata:
+  name: sha
+build:
+  artifacts:
+  - image: sha
+deploy:
+  kubectl:
+    manifests:
+    - deployment.yaml
