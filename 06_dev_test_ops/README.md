@@ -272,7 +272,7 @@ Watching for changes...
 
 In this exercise you will deploy Elastic search, Grafana, Kibana, and Fluentd inside your Kubenernetes cluster and see how you can collect metrics from services.
 
-You will be use a Go service that runs an HTTP server and returns a square of the provided number - the service is in the `./square` folder. For example:
+You will be use a Go service that runs an HTTP server and returns a square of the given number - the service is in the `./square` folder. For example:
 
 ```
 $ curl localhost:8080/square/55
