@@ -210,26 +210,28 @@ kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | gre
 
 ## Config maps and Secrets
 
-Let's make some changes to the `hello-kube` Node.js application, build the Docker image and then deploy it to the cluster.
+To demonstrate config maps and secrets in Kubernetes, you will use a sample Node.js application from the `./hello-kube` folder.
+
+Let's make some changes to the application, build the Docker image and then deploy it to the cluster.
 
 1. Open `routes/index.js` and change the `firstName` variable value to your name.
 
 1. Build the Docker image:
 
    ```
-   docker build -t [username]/hello-kube:0.1.0 .
+   docker build -t [repository]/hello-kube:0.1.0 .
    ```
 
 1. Run the Docker image on your machine to make sure changes work:
 
    ```
-   docker run -it -p 3000:3000 [username]/hello-kube:0.1.0
+   docker run -it -p 3000:3000 [repository]/hello-kube:0.1.0
    ```
 
 1. Push the image to the Docker hub:
 
    ```
-   docker push [username]/hello-kube:0.1.0
+   docker push [repository]/hello-kube:0.1.0
    ```
 
 1. Update `deploy/deployment.yaml` to use the image name you pushed.

@@ -414,4 +414,3 @@ $ curl -H "api-key: TEST" localhost:5000/square/12
 ```
 
 Finally, let's check the stats again - specifically the Denied column in the `api_gateway` section. You should see the number of denied requests there.
-

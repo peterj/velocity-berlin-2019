@@ -5,6 +5,7 @@ In this exercise you will install Docker CLI, create a Docker hub account and tr
 ## Prerequisites
 
 - [Docker for Mac/Windows](https://docs.docker.com/docker-for-mac/install/) (or Docker for Linux)
+- Account on [Docker Hub](https://hub.docker.com)
 
 Run `docker version` to make sure you have Docker up and running. The of the `docker version` command should look similar to this:
 
