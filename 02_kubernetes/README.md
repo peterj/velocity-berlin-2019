@@ -16,6 +16,7 @@ Minikube for running a Kubernetes cluster)
 - [K9s - Kubernetes CLI To Manage Your Clusters In Style](https://github.com/derailed/k9s)
 - [Kubectx](https://github.com/ahmetb/kubectx/)
 - [Popeye - Kubernetes cluster resource sanitizer](https://github.com/derailed/popeye)
+- [kind - run Kubernetes cluster using Docker container 'nodes'](https://github.com/kubernetes-sigs/kind)
 
 ## Getting familiar
 
