@@ -88,7 +88,7 @@ docker history docker-layers
 1. Notice a separate layer gets created for `apk update` and `apk add curl` commands. You can make this better and more efficient by combining both commands into a single command like this:
 
 ```
-RUN apk update && apk add install
+RUN apk update && apk add curl
 ```
 
 1. Now you can update the `Dockerfile` and rebuild it:
