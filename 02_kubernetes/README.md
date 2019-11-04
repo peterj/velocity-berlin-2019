@@ -1,4 +1,4 @@
-# Kubernetes Exercieses
+# Kubernetes Exercises
 
 In this exercise you will install a Kubernetes cluster (or use a cloud-managed one) to deploy an application and try out some `kubectl` commands. You will also learn how Deployments and Services look like in YAML and how to create ConfigMaps, Secrets and use readiness probes.
 
