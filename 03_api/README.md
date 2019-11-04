@@ -65,7 +65,7 @@ First, let's define an array where we will store the user information. We will m
 1. Define the array - add the following line to the top of the file:
 
 ```
-'use string'
+'use strict';
 
 let users = [];
 ```
