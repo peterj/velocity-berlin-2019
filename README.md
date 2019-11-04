@@ -1,6 +1,8 @@
 # Building Cloud-Native Applications
 
-List of exercises
+**Workshop slides**: http://bit.ly/buildcnapps
+
+List of exercises:
 
 - [Docker](./01_docker/README.md)
 - [Kubernetes](./02_kubernetes/README.md)

@@ -1,4 +1,4 @@
-# Kubernetes Exercieses
+# Kubernetes Exercises
 
 In this exercise you will install a Kubernetes cluster (or use a cloud-managed one) to deploy an application and try out some `kubectl` commands. You will also learn how Deployments and Services look like in YAML and how to create ConfigMaps, Secrets and use readiness probes.
 
@@ -10,6 +10,13 @@ In this exercise you will install a Kubernetes cluster (or use a cloud-managed o
 
 If you're using Linux, you will have to install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
 Minikube for running a Kubernetes cluster)
+
+### Other Tools for Kubernetes
+
+- [K9s - Kubernetes CLI To Manage Your Clusters In Style](https://github.com/derailed/k9s)
+- [Kubectx](https://github.com/ahmetb/kubectx/)
+- [Popeye - Kubernetes cluster resource sanitizer](https://github.com/derailed/popeye)
+- [kind - run Kubernetes cluster using Docker container 'nodes'](https://github.com/kubernetes-sigs/kind)
 
 ## Getting familiar
 
@@ -102,13 +109,14 @@ Any containers running inside Kubernetes need to be explicitly exposed in order 
 You can use the `expose` command to create a Kubernetes service and 'expose' your application:
 
 ```
-$ kubectl expose deployment helloworld --port=8080 --target-port=3000 --type=LoadBalancer
-service/helloworld exposed
+kubectl expose deployment helloworld --port=8080 --target-port=3000 --type=LoadBalancer
 ```
+
+The output of the above command will simply be: `service/helloworld exposed`.
 
 The above command exposes the deployment called `helloworld` on port `8080`, talking to the target port (container port) `3000`. Additionall, we are saying we want to expose this on a service of type LoadBalancer - this will allocate a 'public' IP for us (`localhost` when running Docker for Mac), so we can acccess the application on e.g. `http://localhost:8080`.
 
-> Minikube: Use the Minikube IP address (get it with `minikube ip`) and the internal port (run `kubectl get services` and use second port in the pair (e.g. `8080:30012` -> use `30012`)) to access the exposed application.
+> Minikube: Use the Minikube IP address (get it with `minikube ip`) and the internal port (run `kubectl get services` and use second port in the pair (e.g. `8080:30012` -> use `30012`)) to access the exposed application or type `minikube service helloworld` to open it in your web browser.
 
 Expose command creates another Kubernetes resource - a Service. To look at the details of the created service, run:
 
@@ -158,6 +166,8 @@ kubectl scale deployment helloworld --replicas=1
 ```
 
 ## Kubernetes Dashboard
+
+If you are using Minikube, you can run `minikube dashboard` to open the dashboard. If you're using Docker for Mac/Windows, follow the steps below to install it.
 
 1. Install the Kubernetes dashboard:
 
