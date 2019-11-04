@@ -505,3 +505,187 @@ logrus.Infof("Returning result: %d", num*num)
 ```
 
 You will have to rebuild the service and restart the pod in Kubernetes. Note: you can change the `imagePullPolicy:` in the deployment YAML to `Never` - this way you don't need to push the image to the Docker hub, instead Docker for Mac/Minikube will use the image you built locally.
+
+
+## Jenkins
+
+In this exercise you will run a Jenkins container locally on your machine and create a simple CI pipeline that builds, tests and push a Docker image to the registry.
+
+
+### Setup
+
+1. Start the Jenkins container:
+
+```
+docker run -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock learncloudnative/jenkins-docker:lts
+```
+
+>Warning: if you stop or kill the Jenkins container, you will loose all data.
+
+
+```
+HACKHACKHACKHACKHACK
+
+Run `docker ps` to get the ID of the Jenkins container you ran above, then get a shell inside it:
+
+
+docker exec -it [CONTAINER_ID] /bin/bash
+
+
+and run the chmod to set the permissions for the jenkins user on the docker socket:
+
+
+sudo chmod 777 /var/run/docker.sock
+
+
+HACKHACKHACKHACKHACK
+```
+
+1. Open `http://localhost:8080` and go through the setup wizard
+
+1. Enter the admin password. The admin password to access the Jenkins website will be in the log output and it will look like this:
+
+```
+Jenkins initial setup is required. An admin user has been created and a password generated.
+Please use the following password to proceed to installation:
+
+d5e4e2c3445b4252922b78b07cb08668
+
+This may also be found at: /var/jenkins_home/secrets/initialAdminPassword
+```
+
+1. Click Continue and then Select Plugins to install
+
+1. Search for `nodejs` and select the Node.js plugin 
+
+1. Click Install (this might take a minute or so)
+
+1. Enter the username, password and other required information, and click Save and Continue
+
+1. On the Instance Configuration page, simply click Save and Finish
+
+
+
+### Node.js plugin configuration
+
+You need to configure the Node.js plugin, before you can use it.
+
+1. Click Manage Jenkins link
+
+1. Click Global Tool Configuration
+
+1. Scroll to the NodeJS section and click the Add NodeJS button
+
+1. Enter `latest` for the name and select the latest version from the drop-down
+
+1. In the "Global npm packages to install" text box, type in `jest`
+
+1. Click Save at the bottom
+
+### Configuring Docker credentials
+
+In order for Jenkins to be able to push to the Docker registry, you need to store your Docker user name and password in the credentials section.
+
+1. Click the **Credentials** link from the nav bar on the left
+1. Click the `(global)` credential store (there should be only one anyway)
+1. Click the **Add Credentials** link from the nav bar on the left
+1. From the **Kind** drop down, select "Username with password"
+1. Enter your Docker hub username and password
+1. Enter `dockerhub` in the ID and Description fields
+1. Click OK
+
+
+### Setting up a Node.js repository
+
+
+### Create a CI pipeline
+
+1. Click the Create new Job link on the Jenkins main page
+
+1. Select the Pipeline option and name it `uppercase-pipeline`
+
+1. Click OK
+
+
+In the pipeline below, you need to update the following two things:
+
+1. Update the `dockerRegistry` value to your own repository name
+1. GitHub repository URL (in case you forked the original repo, otherwise you can use the existing one)
+
+```
+pipeline {
+    environment {
+      dockerRegistry = "pj3677"
+      dockerRegistryCredential = 'dockerhub'
+      dockerImage = 'uppercase-svc'
+    }
+
+    agent any
+    tools {nodejs "latest" }
+    stages {
+        stage('Checkout code') {
+          steps {
+              git branch: 'master',
+                url: 'https://github.com/peterj/uppercase'
+          }
+        }
+        stage('Build') {
+            steps {
+                echo 'Building..'
+                sh 'npm install'
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Testing..'
+                sh 'jest'
+            }
+        }
+        stage('Build image') {
+            steps {
+              script {
+                dockerImage = docker.build dockerRegistry + "/" + dockerImage + ":$BUILD_NUMBER"
+              }
+            }
+        }
+        stage('Push Image') {
+            steps {
+              script {
+                docker.withRegistry( '', dockerRegistryCredential ) {
+                  dockerImage.push()
+                }
+              }
+            }
+        }
+    }
+}
+```
+
+The paste the above contents to the Pipeline text area and click Save to create the pipeline.
+
+The pipeline above is broken into a couple of stages:
+
+1. Checkout Code stage: this is where we run the git clone command to pull down the latest source code
+
+1. Build stage: running `npm install` we build the source code
+
+1. Test stage: we run `jest` to execute all the tests
+
+1. Build image: build the docker image, using the build id as the tag number
+
+1. Push image: using the registry credentials you define, you push the image to the Docker registry
+
+
+### Creating builds
+
+To kick off a pipeline, click on the pipeline name, then click the Build Now link from the left sidebar.
+
+This initialize the pipeline and you can click on the build number and then Console Output link to see the live output from the pipeline.
+
+### Installing Blue Ocean
+
+Blue Ocean is a much better and updated UI for Jenkins. To install it, go back to the Plugin management and under Available plugins, search for "Blue Ocean". 
+
+Once the plugin is installed, you can open `http://localhost:8080/blue` to see the much better UI.
+
+Try clicking New Pipeline and go through the wizard. You can use the wizard to create a pipeline using a Github repo, however you will need your own repo as you have to provide an API token Jenkins uses to talk to the Github.
