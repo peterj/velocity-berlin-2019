@@ -116,7 +116,7 @@ The output of the above command will simply be: `service/helloworld exposed`.
 
 The above command exposes the deployment called `helloworld` on port `8080`, talking to the target port (container port) `3000`. Additionall, we are saying we want to expose this on a service of type LoadBalancer - this will allocate a 'public' IP for us (`localhost` when running Docker for Mac), so we can acccess the application on e.g. `http://localhost:8080`.
 
-> Minikube: Use the Minikube IP address (get it with `minikube ip`) and the internal port (run `kubectl get services` and use second port in the pair (e.g. `8080:30012` -> use `30012`)) to access the exposed application.
+> Minikube: Use the Minikube IP address (get it with `minikube ip`) and the internal port (run `kubectl get services` and use second port in the pair (e.g. `8080:30012` -> use `30012`)) to access the exposed application or type `minikube service helloworld` to open it in your web browser.
 
 Expose command creates another Kubernetes resource - a Service. To look at the details of the created service, run:
 
