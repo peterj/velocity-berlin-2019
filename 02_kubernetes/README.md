@@ -108,9 +108,10 @@ Any containers running inside Kubernetes need to be explicitly exposed in order 
 You can use the `expose` command to create a Kubernetes service and 'expose' your application:
 
 ```
-$ kubectl expose deployment helloworld --port=8080 --target-port=3000 --type=LoadBalancer
-service/helloworld exposed
+kubectl expose deployment helloworld --port=8080 --target-port=3000 --type=LoadBalancer
 ```
+
+The output of the above command will simply be: `service/helloworld exposed`.
 
 The above command exposes the deployment called `helloworld` on port `8080`, talking to the target port (container port) `3000`. Additionall, we are saying we want to expose this on a service of type LoadBalancer - this will allocate a 'public' IP for us (`localhost` when running Docker for Mac), so we can acccess the application on e.g. `http://localhost:8080`.
 
@@ -164,6 +165,8 @@ kubectl scale deployment helloworld --replicas=1
 ```
 
 ## Kubernetes Dashboard
+
+If you are using Minikube, you can run `minikube dashboard` to open the dashboard. If you're using Docker for Mac/Windows, follow the steps below to install it.
 
 1. Install the Kubernetes dashboard:
 
