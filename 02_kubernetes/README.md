@@ -11,6 +11,12 @@ In this exercise you will install a Kubernetes cluster (or use a cloud-managed o
 If you're using Linux, you will have to install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
 Minikube for running a Kubernetes cluster)
 
+### Other Tools for Kubernetes
+
+- [K9s - Kubernetes CLI To Manage Your Clusters In Style](https://github.com/derailed/k9s)
+- [Kubectx](https://github.com/ahmetb/kubectx/)
+
+
 ## Getting familiar
 
 Kubernetes CLI (`kubectl`) is what you will use to talk to your Kubernetes cluster.
