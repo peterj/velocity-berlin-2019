@@ -35,7 +35,8 @@ app.get('/:msg', async (req, res) => {
 
     // Listen on the queue and wait for the response to come back.
     // No need to ack the the message as we exit anyway.
-    channel.consume(queue.name, (msg) => {
+    // TODO: this should be `queue.name` instead.
+    channel.consume(QueueName, (msg) => {
         if (msg.properties.correlationId === correlationId) {
             console.log(`${new Date().toUTCString()} - message received "${msg.content.toString()}"`);
             res.json({ msg: msg.content.toString() });
