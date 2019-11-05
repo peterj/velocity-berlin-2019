@@ -200,14 +200,14 @@ Let's make a small change to the code that includes the original string in a hea
 ```go
 func shaHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
-	str := vars["input"]
+    str := vars["input"]
 
-	h := sha1.New()
-	h.Write([]byte(str))
+    h := sha1.New()
+    h.Write([]byte(str))
     sha := hex.EncodeToString(h.Sum(nil))
 
     w.Header().Set("Input-String", str)
-	w.Write([]byte(sha))
+    w.Write([]byte(sha))
 }
 ```
 
