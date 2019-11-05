@@ -615,7 +615,7 @@ In the pipeline below, you need to update the following two things:
 ```
 pipeline {
     environment {
-      dockerRegistry = "pj3677"
+      dockerRegistry = "learncloudnative"
       dockerRegistryCredential = 'dockerhub'
       dockerImage = 'uppercase-svc'
     }
