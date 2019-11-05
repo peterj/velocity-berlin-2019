@@ -31,7 +31,7 @@ istioctl verify-install
 1.  Verify that all 23 Istio CRDs were committed to the Kubernetes api-server using the following command (you should get a response of 23):
 
     ```bash
-    kubectl get crds | grep 'istio.io\|certmanager.k8s.io' | wc -l
+    kubectl -n istio-system get crds | grep 'istio.io\|certmanager.k8s.io' | wc -l
     ```
 
 1.  Install Istio
