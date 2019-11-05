@@ -6,6 +6,7 @@
 - [Helm](https://helm.sh)
 - [Draft](https://draft.sh)
 - [Skaffold](https://skaffold.dev)
+- [Go](https://golang.org/dl/)
 
 > Make sure you run `draft init` after installation to initialize the Draft packs.
 
@@ -33,7 +34,9 @@ func main() {
 }
 ```
 
-1. Use `draft create` to install scaffolding (e.g. Helm cahrt, Dockerfile):
+1. Run `go mod init hello` to create the Go module
+
+1. Use `draft create` to install scaffolding (e.g. Helm chart, Dockerfile):
 
 ```
 $ draft create
