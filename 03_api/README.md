@@ -2,6 +2,12 @@
 
 In this exercise you will be using [Swagger](http://editor.swagger.io/) to create an API document, generate a service implementation.
 
+## Prerequisites
+
+In one part of this exercise you will download some source code and then run it - you can pick any programming language you are familiar with, just make sure you have the tools/compilers/etc. installed, so you can run the code. 
+
+The examples below are using [Node.js](https://nodejs.org/en/). 
+
 # Using Swagger for APIs
 
 ## Create the API spec

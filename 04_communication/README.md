@@ -15,7 +15,7 @@ For the pub/sub exercise you will use three different services to simulate a use
 - Docker
 - Kubernetes cluster
 - [Helm](https://helm.sh)
-- Node.js/npm
+- [Node.js](https://nodejs.org/en/) and [npm](https://www.npmjs.com/get-npm)
 
 ## Sync communication
 

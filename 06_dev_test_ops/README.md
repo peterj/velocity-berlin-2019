@@ -16,7 +16,7 @@ $ curl localhost:8080/Hello
 f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0
 ```
 
-Unlike Draft that creates the Dockerfile and Helm chart for you, in order to use Skaffold you need to create a Dockerfile as well as a Kubernetes deployment file (both are already included in the `./sha` folder).
+In order to use Skaffold you need to create a Dockerfile as well as a Kubernetes deployment file (both are already included in the `./sha` folder).
 
 To start, let's initialize Skaffold by `skaffold init`:
 
@@ -440,8 +440,6 @@ This may also be found at: /var/jenkins_home/secrets/initialAdminPassword
 
 1. On the Instance Configuration page, simply click Save and Finish
 
-
-
 ### Node.js plugin configuration
 
 You need to configure the Node.js plugin, before you can use it.
@@ -469,10 +467,6 @@ In order for Jenkins to be able to push to the Docker registry, you need to stor
 1. Enter your Docker hub username and password
 1. Enter `dockerhub` in the ID and Description fields
 1. Click OK
-
-
-### Setting up a Node.js repository
-
 
 ### Create a CI pipeline
 

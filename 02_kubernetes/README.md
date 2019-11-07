@@ -167,7 +167,9 @@ kubectl scale deployment helloworld --replicas=1
 
 ## Kubernetes Dashboard
 
-If you are using Minikube, you can run `minikube dashboard` to open the dashboard. If you're using Docker for Mac/Windows, follow the steps below to install it.
+If you are using Minikube the dashboard is already installed - just run `minikube dashboard` to open it.
+
+If you're using Docker for Mac/Windows, follow the steps below to install the dashboard.
 
 1. Install the Kubernetes dashboard:
 
@@ -481,3 +483,9 @@ EOF
    ```
    Error from server (Forbidden): pods "extra-pod" is forbidden: exceeded quota: pods-limit, requested: pods=1, used: pods=5, limited: pods=5
    ```
+
+Make sure you don't forget to delete the quota before moving on:
+
+```
+kubectl delete resource quota pods-limit
+```
